@@ -7,7 +7,7 @@ import { ERRORS } from '../../constant/index';
 import moment from 'moment';
 
 export const getPayment = async (id) => {
-  const connection = await oracledb.getConnection(config.oracle);
+  let connection;
   const { p_dblink } = config;
   const p_tinh = mapProvine(id);
   if (!p_tinh) return Promise.reject(ERRORS.CLIENT_NOT_EXIST);
@@ -46,6 +46,7 @@ export const getPayment = async (id) => {
               group by a.ID_HDON,a.LOAI_HDON,a.ky,a.thang,a.nam,a.NGAY_DKY,a.NGAY_CKY,a.NGAY_PHANH,b.ngay_cky,b.ky
               order by  a.ngay_cky desc`;
   try {
+    connection = await oracledb.getConnection(config.oracle);
     const result = await connection.execute(sql);
     const keys = result.metaData.map(doc => doc.name);
     const data = result.rows;
@@ -56,7 +57,7 @@ export const getPayment = async (id) => {
           const val = row[i] ? +row[i].toFixed(2) : null;
           obj[keys[i]] = val;
         } else if (['NGAY_PHANH', 'NGAY_DKY', 'NGAY_CKY'].includes(keys[i])) {
-          const date = keys[i] ? moment(row[i]).add(7, 'hours').format('DD/MM/YYYY') : null;
+          const date = row[i] ? moment(row[i]).add(7, 'hours').format('DD/MM/YYYY') : null;
           obj[keys[i]] = date;
         } else {
           obj[keys[i]] = row[i];
@@ -67,7 +68,8 @@ export const getPayment = async (id) => {
     await connection.close();
     return { data: finalData };
   } catch (e) {
-    await connection.close();
+    console.log('oi ne');
+    if (connection) await connection.close();
     return Promise.reject('SOMETHING HAPPEN');
   }
 };
